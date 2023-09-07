@@ -61,8 +61,8 @@ class UNet(pl.LightningModule):
         return self.layers[-1](xi[-1])
 
     def adapt_mask(self, y):
-        mask_type = torch.float32 if self.n_classes == 1 else torch.long
-        y = y.squeeze(1)
+        mask_type = torch.float32 if self.n_classes == 1 else torch.uint8
+        # y = y.squeeze(1)
         y = y.type(mask_type)
         return y
 

@@ -8,7 +8,7 @@ import numpy as np
 class ToTensorFront(object):
     def __call__(self, image, target):
         image = F.to_tensor(image)
-        target = torch.as_tensor(np.array(target))
+        target = F.to_tensor(target)
         # value for front=255, background=0
         target[target == 255] = 1
         target[target == 0] = 0

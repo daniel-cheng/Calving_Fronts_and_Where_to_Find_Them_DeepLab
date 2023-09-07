@@ -304,7 +304,8 @@ class DeepLabv3_plus(nn.Module):
 
         # ASPP
         if os == 16:
-            rates = [1, 6, 12, 18]
+            # rates = [1, 6, 12, 18]
+            rates = [1, 2, 3, 5, 7]
         elif os == 8:
             rates = [1, 12, 24, 36]
         else:
@@ -314,6 +315,7 @@ class DeepLabv3_plus(nn.Module):
         self.aspp2 = ASPP_module(2048, 256, rate=rates[1])
         self.aspp3 = ASPP_module(2048, 256, rate=rates[2])
         self.aspp4 = ASPP_module(2048, 256, rate=rates[3])
+        self.aspp5 = ASPP_module(2048, 256, rate=rates[4])
 
         self.relu = nn.ReLU()
 
@@ -343,10 +345,11 @@ class DeepLabv3_plus(nn.Module):
         x2 = self.aspp2(x)
         x3 = self.aspp3(x)
         x4 = self.aspp4(x)
-        x5 = self.global_avg_pool(x)
-        x5 = F.upsample(x5, size=x4.size()[2:], mode='bilinear', align_corners=True)
+        x5 = self.aspp5(x)
+        x6 = self.global_avg_pool(x)
+        x6 = F.upsample(x6, size=x5.size()[2:], mode='bilinear', align_corners=True)
 
-        x = torch.cat((x1, x2, x3, x4, x5), dim=1)
+        x = torch.cat((x1, x2, x3, x4, x5, x6), dim=1)
 
         x = self.conv1(x)
         x = self.bn1(x)

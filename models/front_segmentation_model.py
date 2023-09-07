@@ -3,7 +3,6 @@ from models.ParentUNet import UNet
 from scipy.ndimage.morphology import distance_transform_edt as edt
 import torch
 import torchmetrics
-from einops import rearrange
 import numpy as np
 import cv2
 from segmentation_models_pytorch.losses.dice import DiceLoss
@@ -22,7 +21,6 @@ class DistanceMapBCE(nn.Module):
         distance_maps = torch.stack(list(map(self.distance_map, torch.unbind(targets))))
         preds = torch.stack(list(map(torch.mul, torch.unbind(preds), torch.unbind(distance_maps))))
         criterion = DiceLoss('binary', from_logits=False)
-        targets = rearrange(targets, 'b h w -> b 1 h w')
         loss = criterion(preds, targets)
         return loss
 
@@ -47,7 +45,7 @@ class FrontUNet(UNet):
     def __init__(self, hparams):
         # Front, Background -> binary hence one output channel (=n_classes) is sufficient
         # for IoU num_classes=2, as we want to differentiate between background and foreground IoU
-        super().__init__(hparams=hparams, metric=torchmetrics.JaccardIndex(task="multiclass", num_classes=2, average="none", absent_score=1.0), n_classes=2)
+        super().__init__(hparams=hparams, metric=torchmetrics.JaccardIndex(task="multiclass", num_classes=2, average="none", absent_score=1.0), n_classes=1)
         self.w = hparams["w"]
         self.k = hparams["k"]
         self.relax = hparams["relax"]
@@ -90,7 +88,7 @@ class FrontUNet(UNet):
         y = self.adapt_mask(y)
         criterion = DistanceMapBCE(self.device, w=self.w, k=self.k, relax=self.relax)
         loss = criterion(y_hat, y)
-        return loss, self.class_wise_iou(torch.greater_equal(y_hat, 0), y)
+        return loss, self.class_wise_iou(torch.greater_equal(y_hat, 0).to(torch.float32), y)
 
     @staticmethod
     def add_model_specific_args(parent_parser):

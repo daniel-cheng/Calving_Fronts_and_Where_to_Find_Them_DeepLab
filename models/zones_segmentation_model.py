@@ -8,7 +8,7 @@ from segmentation_models_pytorch.losses.dice import DiceLoss
 class ZonesUNet(UNet):
     def __init__(self, hparams):
         # n_classes = 4 -> Glacier, Rock, Ocean/Ice Melange, NA
-        super().__init__(hparams=hparams, metric=torchmetrics.IoU(num_classes=4, reduction="none", absent_score=1.0), n_classes=4)
+        super().__init__(hparams=hparams, metric=torchmetrics.JaccardIndex(task="multiclass", num_classes=4, average="none", absent_score=1.0), n_classes=4)
 
     def make_batch_dictionary(self, loss, metric, name_of_loss):
         """ Give batch_dictionary corresponding to the number of metrics for zone segmentation """

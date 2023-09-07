@@ -6,7 +6,6 @@ from torch.utils.data import Dataset
 import torchvision
 from data_processing.utils import MyWrap, Rotate, Bright, Noise
 import numpy as np
-import pickle
 
 
 class GlacierDataset(Dataset):
@@ -30,19 +29,19 @@ class GlacierDataset(Dataset):
         # However, always use same shuffle so that it is reproducible
         if not os.path.exists(os.path.join("data_processing", "data_splits")):
             os.makedirs(os.path.join("data_processing", "data_splits"))
-        if not os.path.isfile(os.path.join("data_processing", "data_splits", "shuffle_" + mode + ".txt")):
+        if not os.path.isfile(os.path.join("data_processing", "data_splits", "shuffle_" + mode + ".npy")):
             shuffle = np.random.permutation(len(self.imgs))
-            with open(os.path.join("data_processing", "data_splits", "shuffle_" + mode + ".txt"), "wb") as fp:
-                pickle.dump(shuffle, fp)
+            with open(os.path.join("data_processing", "data_splits", "shuffle_" + mode + ".npy"), "wb") as fp:
+                np.save(fp, shuffle)
         else:
             # use already existing shuffle
-            with open(os.path.join("data_processing", "data_splits", "shuffle_" + mode + ".txt"), "rb") as fp:
-                shuffle = pickle.load(fp)
+            with open(os.path.join("data_processing", "data_splits", "shuffle_" + mode + ".npy"), "rb") as fp:
+                shuffle = np.load(fp)
                 # if lengths do not match, we need to create a new permutation
                 if len(shuffle) != len(self.imgs):
                     shuffle = np.random.permutation(len(self.imgs))
-                    with open(os.path.join("data_processing", "data_splits", "shuffle_" + mode + ".txt"), "wb") as fp:
-                        pickle.dump(shuffle, fp)
+                    with open(os.path.join("data_processing", "data_splits", "shuffle_" + mode + ".npy"), "wb") as fp:
+                        np.save(shuffle, fp)
 
         self.imgs = np.array(self.imgs)
         self.labels = np.array(self.labels)

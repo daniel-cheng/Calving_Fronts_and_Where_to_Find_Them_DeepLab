@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from models.zones_segmentation_model import ZonesUNet
 from models.front_segmentation_model import FrontUNet
+from models.networks.deeplab_xception import DeepLabv3_plus
 from data_processing.glacier_zones_data import GlacierZonesDataModule
 from data_processing.glacier_front_data import GlacierFrontDataModule
 from pytorch_lightning import Trainer, seed_everything
@@ -47,7 +48,7 @@ def main(hparams, run_number, running_mode):
         print("Taking up the training where it was left (temporary checkpoint)")
         trainer = Trainer(resume_from_checkpoint=checkpoint_dir + "temporary.ckpt",
                           callbacks=[early_stop_callback, checkpoint_callback, lr_monitor],
-                          deterministic=True,
+                          deterministic=False,
                           gpus=1,  # Train on gpu
                           gradient_clip_val=clip_norm,
                           logger=logger,
@@ -57,7 +58,7 @@ def main(hparams, run_number, running_mode):
             # Try to overfit on some batches
             trainer = Trainer.from_argparse_args(hparams,
                                                  callbacks=[checkpoint_callback, lr_monitor],
-                                                 deterministic=True,
+                                                 deterministic=False,
                                                  fast_dev_run=False,
                                                  flush_logs_every_n_steps=100,
                                                  gpus=1,
@@ -69,7 +70,7 @@ def main(hparams, run_number, running_mode):
             # Debugging mode
             trainer = Trainer.from_argparse_args(hparams,
                                                  callbacks=[checkpoint_callback, lr_monitor],
-                                                 deterministic=True,
+                                                 deterministic=False,
                                                  fast_dev_run=3,
                                                  flush_logs_every_n_steps=100,
                                                  gpus=1,
@@ -79,7 +80,7 @@ def main(hparams, run_number, running_mode):
             # Training mode
             trainer = Trainer.from_argparse_args(hparams,
                                                  callbacks=[early_stop_callback, checkpoint_callback, lr_monitor],
-                                                 deterministic=True,
+                                                 deterministic=False,
                                                  gpus=1,  # Train on gpu
                                                  gradient_clip_val=clip_norm,
                                                  logger=logger,
@@ -97,7 +98,10 @@ def main(hparams, run_number, running_mode):
                                             noise=hparams.noise,
                                             rotate=hparams.rotate,
                                             flip=hparams.flip)
-        model = ZonesUNet(vars(hparams))
+        if hparams.model_family == "gourmelon":
+            model = ZonesUNet(vars(hparams))
+        else:
+            model = ZonesDeeplab(vars(hparams))
 
     else:
         datamodule = GlacierFrontDataModule(batch_size=hparams.batch_size,
@@ -108,7 +112,11 @@ def main(hparams, run_number, running_mode):
                                             noise=hparams.noise,
                                             rotate=hparams.rotate,
                                             flip=hparams.flip)
-        model = FrontUNet(vars(hparams))
+        if hparams.model_family == "gourmelon":
+            model = FrontUNet(vars(hparams))
+        else:
+            model = DeepLabv3_plus(nInputChannels=3, n_classes=2, os=16, pretrained=True, _print=True)
+            # model = FrontDeeplab(vars(hparams))
 
     summary(model.cuda(), (1, 256, 256))
     print(model.eval())
@@ -145,6 +153,8 @@ if __name__ == '__main__':
                                     "the second run will pick up training the first model from the temporary.ckpt.")
     parent_parser.add_argument('--target_masks', default="zones", help="Either 'fronts' or 'zones'. "
                                                                         "This decides which model will be trained.")
+    parent_parser.add_argument('--model_family', default="gourmelon", help="Either 'gourmelon' or 'calfin'. "
+                                                                        "This decides which model family will be used.")
 
     tmp = parent_parser.parse_args()
     if tmp.target_masks == "fronts":

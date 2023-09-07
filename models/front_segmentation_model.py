@@ -47,7 +47,7 @@ class FrontUNet(UNet):
     def __init__(self, hparams):
         # Front, Background -> binary hence one output channel (=n_classes) is sufficient
         # for IoU num_classes=2, as we want to differentiate between background and foreground IoU
-        super().__init__(hparams=hparams, metric=torchmetrics.IoU(num_classes=2, reduction="none", absent_score=1.0), n_classes=1)
+        super().__init__(hparams=hparams, metric=torchmetrics.JaccardIndex(task="multiclass", num_classes=2, average="none", absent_score=1.0), n_classes=2)
         self.w = hparams["w"]
         self.k = hparams["k"]
         self.relax = hparams["relax"]

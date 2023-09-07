@@ -4,7 +4,6 @@ import threading
 from pathlib import Path
 import numpy as np
 from sklearn.model_selection import train_test_split
-import pickle
 import cv2
 
 
@@ -164,23 +163,23 @@ def main(raw_data_dir, patch_size, overlap, overlap_test, overlap_val):
                 if not os.path.exists("data_splits"):
                     os.makedirs("data_splits")
 
-                if not os.path.isfile(os.path.join("data_splits", "train_idx.txt")) \
-                        or not os.path.isfile(os.path.join("data_splits", "val_idx.txt")):
+                if not os.path.isfile(os.path.join("data_splits", "train_idx.npy")) \
+                        or not os.path.isfile(os.path.join("data_splits", "val_idx.npy")):
                     data_idx = np.arange(len(files))
                     train_idx, val_idx = train_test_split(data_idx, test_size=0.1, random_state=1)
 
-                    with open(os.path.join("data_splits", "train_idx.txt"), "wb") as fp:
-                        pickle.dump(train_idx, fp)
+                    with open(os.path.join("data_splits", "train_idx.npy"), "wb") as fp:
+                        np.save(fp, train_idx)
 
-                    with open(os.path.join("data_splits", "val_idx.txt"), "wb") as fp:
-                        pickle.dump(val_idx, fp)
+                    with open(os.path.join("data_splits", "val_idx.npy"), "wb") as fp:
+                        np.save(fp, val_idx)
                 else:
                     # use already existing split
-                    with open(os.path.join("data_splits", "train_idx.txt"), "rb") as fp:
-                        train_idx = pickle.load(fp)
+                    with open(os.path.join("data_splits", "train_idx.npy"), "rb") as fp:
+                        train_idx = np.load(fp)
 
-                    with open(os.path.join("data_splits", "val_idx.txt"), "rb") as fp:
-                        val_idx = pickle.load(fp)
+                    with open(os.path.join("data_splits", "val_idx.npy"), "rb") as fp:
+                        val_idx = np.load(fp)
 
                 # Start preprocessing for both training and validation set
                 t = threading.Thread(target=preprocess, args=(modality_dir, data_split_dir, [files[i] for i in train_idx], patch_size, overlap))

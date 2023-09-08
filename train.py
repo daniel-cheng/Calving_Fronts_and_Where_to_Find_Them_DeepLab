@@ -1,7 +1,8 @@
 from argparse import ArgumentParser
 from models.zones_segmentation_model import ZonesUNet
 from models.front_segmentation_model import FrontUNet
-from models.networks.deeplab_xception import DeepLabv3_plus
+from models.networks.zones_segmentation_deeplab_model import ZonesDeepLab
+from models.networks.front_segmentation_deeplab_model import FrontDeepLab
 from data_processing.glacier_zones_data import GlacierZonesDataModule
 from data_processing.glacier_front_data import GlacierFrontDataModule
 from pytorch_lightning import Trainer, seed_everything
@@ -44,12 +45,18 @@ def main(hparams, run_number, running_mode):
     lr_monitor = LearningRateMonitor(logging_interval='step')
 
     # if we have already trained this model take up the training at the last checkpoint
+    if hparams.model_family == "gourmelon":
+        accumulate_grad_batches = 1
+    elif hparams.model_family == "deeplab":
+        accumulate_grad_batches = 2  # implicit batch size 4 to get 16 samples per batchnorm for 6GB VRAM
+
     if os.path.isfile(checkpoint_dir + "temporary.ckpt"):
         print("Taking up the training where it was left (temporary checkpoint)")
         trainer = Trainer(resume_from_checkpoint=checkpoint_dir + "temporary.ckpt",
                           callbacks=[early_stop_callback, checkpoint_callback, lr_monitor],
                           deterministic=False,
                           gpus=1,  # Train on gpu
+                          accumulate_grad_batches=accumulate_grad_batches,
                           gradient_clip_val=clip_norm,
                           logger=logger,
                           max_epochs=hparams.epochs)
@@ -62,26 +69,27 @@ def main(hparams, run_number, running_mode):
                                                  fast_dev_run=False,
                                                  flush_logs_every_n_steps=100,
                                                  gpus=1,
+                                                 accumulate_grad_batches=accumulate_grad_batches,
                                                  log_every_n_steps=1,
                                                  logger=logger,
                                                  max_epochs=1000,
                                                  overfit_batches=1)
         elif running_mode == "debugging":
-            # Debugging mode
             trainer = Trainer.from_argparse_args(hparams,
                                                  callbacks=[checkpoint_callback, lr_monitor],
                                                  deterministic=False,
                                                  fast_dev_run=3,
                                                  flush_logs_every_n_steps=100,
                                                  gpus=1,
+                                                 accumulate_grad_batches=accumulate_grad_batches,
                                                  log_every_n_steps=1,
                                                  logger=logger)
         elif running_mode == "training":
-            # Training mode
             trainer = Trainer.from_argparse_args(hparams,
                                                  callbacks=[early_stop_callback, checkpoint_callback, lr_monitor],
                                                  deterministic=False,
                                                  gpus=1,  # Train on gpu
+                                                 accumulate_grad_batches=accumulate_grad_batches,
                                                  gradient_clip_val=clip_norm,
                                                  logger=logger,
                                                  max_epochs=hparams.epochs)
@@ -100,9 +108,8 @@ def main(hparams, run_number, running_mode):
                                             flip=hparams.flip)
         if hparams.model_family == "gourmelon":
             model = ZonesUNet(vars(hparams))
-        else:
-            model = ZonesDeeplab(vars(hparams))
-
+        elif hparams.model_family == "deeplab":
+            model = ZonesDeepLab(vars(hparams))
     else:
         datamodule = GlacierFrontDataModule(batch_size=hparams.batch_size,
                                             augmentation=running_mode != "batch_overfit",
@@ -114,9 +121,8 @@ def main(hparams, run_number, running_mode):
                                             flip=hparams.flip)
         if hparams.model_family == "gourmelon":
             model = FrontUNet(vars(hparams))
-        else:
-            model = DeepLabv3_plus(nInputChannels=3, n_classes=2, os=16, pretrained=True, _print=True)
-            # model = FrontDeeplab(vars(hparams))
+        elif hparams.model_family == "deeplab":
+            model = FrontDeepLab(vars(hparams))# model = FrontDeeplab(vars(hparams))
 
     summary(model.cuda(), (1, 256, 256))
     print(model.eval())
@@ -153,14 +159,20 @@ if __name__ == '__main__':
                                     "the second run will pick up training the first model from the temporary.ckpt.")
     parent_parser.add_argument('--target_masks', default="zones", help="Either 'fronts' or 'zones'. "
                                                                         "This decides which model will be trained.")
-    parent_parser.add_argument('--model_family', default="gourmelon", help="Either 'gourmelon' or 'calfin'. "
+    parent_parser.add_argument('--model_family', default="gourmelon", help="Either 'gourmelon' or 'deeplab'. "
                                                                         "This decides which model family will be used.")
 
     tmp = parent_parser.parse_args()
     if tmp.target_masks == "fronts":
-        parser = FrontUNet.add_model_specific_args(parent_parser)
+        if tmp.model_family == "gourmelon":
+            parser = FrontUNet.add_model_specific_args(parent_parser)
+        elif tmp.model_family == "deeplab":
+            parser = FrontDeepLab.add_model_specific_args(parent_parser)
     else:
-        parser = ZonesUNet.add_model_specific_args(parent_parser)
+        if tmp.model_family == "gourmelon":
+            parser = ZonesUNet.add_model_specific_args(parent_parser)
+        elif tmp.model_family == "deeplab":
+            parser = ZonesDeepLab.add_model_specific_args(parent_parser)
     parser = Trainer.add_argparse_args(parser)
     hparams = parser.parse_args()
 

@@ -62,8 +62,7 @@ class UNet(pl.LightningModule):
 
     def adapt_mask(self, y):
         mask_type = torch.float32 if self.n_classes == 1 else torch.uint8
-        # y = y.squeeze(1)
-        y = y.type(mask_type)
+        y = y.to(mask_type)
         return y
 
     def give_prediction_for_batch(self, batch):

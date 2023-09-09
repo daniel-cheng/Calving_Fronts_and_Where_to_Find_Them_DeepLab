@@ -410,7 +410,7 @@ class DeepLabv3_plus(pl.LightningModule):
                 m.bias.data.zero_()
 
     def adapt_mask(self, y):
-        mask_type = torch.float32 if self.n_classes == 1 else torch.uint8
+        mask_type = torch.float32 if self.n_classes == 1 else torch.long
         y = y.type(mask_type)
         return y
 

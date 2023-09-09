@@ -26,7 +26,7 @@ def main(hparams, run_number, running_mode):
                                               filename='-{epoch:02d}-{avg_metric_validation:.2f}',
                                               mode='max',  # Here: the higher the IoU the better
                                               save_top_k=1)
-        early_stop_callback = EarlyStopping(monitor="avg_metric_validation", patience=30,
+        early_stop_callback = EarlyStopping(monitor="avg_metric_validation", patience=20,
                                             verbose=False, mode="max", check_finite=True)
         clip_norm = 1.0
     else:
@@ -37,7 +37,7 @@ def main(hparams, run_number, running_mode):
                                               filename='-{epoch:02d}-{avg_loss_validation:.2f}',
                                               mode='min',  # Here: the lower the loss the better
                                               save_top_k=1)
-        early_stop_callback = EarlyStopping(monitor="avg_loss_validation", patience=30,
+        early_stop_callback = EarlyStopping(monitor="avg_loss_validation", patience=20,
                                             verbose=False, mode="min", check_finite=True)
         clip_norm = 1.0
 

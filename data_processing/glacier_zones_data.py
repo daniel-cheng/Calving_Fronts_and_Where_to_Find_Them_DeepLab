@@ -8,7 +8,7 @@ import numpy as np
 class ToTensorZones(object):
     def __call__(self, image, target):
         image = F.to_tensor(image)
-        target = torch.as_tensor(np.array(target))
+        target = torch.as_tensor(np.array(target)).to(torch.long)
         # value for NA area=0, stone=64, glacier=127, ocean with ice melange=254
         target[target == 0] = 0
         target[target == 64] = 1

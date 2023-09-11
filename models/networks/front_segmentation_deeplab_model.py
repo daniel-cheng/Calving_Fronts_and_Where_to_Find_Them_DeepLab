@@ -47,6 +47,7 @@ class FrontDeepLab(DeepLabv3_plus):
         # for IoU num_classes=2, as we want to differentiate between background and foreground IoU
 
         # model = DeepLabv3_plus(nInputChannels=3, n_classes=2, os=16, pretrained=True, _print=True)
+        #super().__init__(hparams=hparams, metric=torchmetrics.JaccardIndex(weight=[1, 1, 1, 1, 25], task="multiclass", num_classes=2, average="none", absent_score=1.0), n_classes=1)
         super().__init__(hparams=hparams, metric=torchmetrics.JaccardIndex(task="multiclass", num_classes=2, average="none", absent_score=1.0), n_classes=1)
         self.w = hparams["w"]
         self.k = hparams["k"]

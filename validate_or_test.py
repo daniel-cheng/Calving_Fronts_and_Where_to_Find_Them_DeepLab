@@ -1,6 +1,8 @@
 from argparse import ArgumentParser
 from models.zones_segmentation_model import ZonesUNet
 from models.front_segmentation_model import FrontUNet
+from models.networks.zones_segmentation_deeplab_model import ZonesDeepLab
+from models.networks.front_segmentation_deeplab_model import FrontDeepLab
 from data_processing.glacier_zones_data import GlacierZonesDataModule
 from data_processing.glacier_front_data import GlacierFrontDataModule
 from data_processing.data_postprocessing import reconstruct_from_patches_and_binarize
@@ -627,12 +629,15 @@ if __name__ == "__main__":
                         help="The version number of the hparams file you want to load. "
                              "You can check the version number in the folder structure of the hparams file "
                              "(tb_logs/..._segmentation/run_.../log/version_?).")
-    parser.add_argument('--checkpoint_file', default="-epoch=143-avg_metric_validation=0.90.ckpt",
+    parser.add_argument('--checkpoint_file', default="-epoch=49-avg_loss_validation=0.63.ckpt",
                         help="The name of the checkpoint file you want to load.")
     parser.add_argument('--data_raw_parent_dir', default=".",
                         help="Where the data_raw directory lies, default: .")
     parser.add_argument('--data_parent_dir', default=".",
                         help="Where the data directory lies, default: .")
+    parser.add_argument('--model_family', default="gourmelon", help="Either 'gourmelon' or 'deeplab'. "
+                                                                    "This decides which model family will be used.")
+
     hparams = parser.parse_args()
 
     assert hparams.target_masks == "fronts" or hparams.target_masks == "zones", \
@@ -651,7 +656,7 @@ if __name__ == "__main__":
                 map_location=None
             )
         else:
-            model = FrontDeeplab.load_from_checkpoint(
+            model = FrontDeepLab.load_from_checkpoint(
                 checkpoint_path=os.path.join(src, "checkpoints", "fronts_segmentation", "run_" + str(hparams.run_number), hparams.checkpoint_file),
                 hparams_file=os.path.join(src, "tb_logs", "fronts_segmentation", "run_" + str(hparams.run_number), "log", "version_" + str(hparams.version_number), "hparams.yaml"),
                 map_location=None
@@ -661,11 +666,23 @@ if __name__ == "__main__":
         assert os.path.isfile(os.path.join(src, "checkpoints", "zones_segmentation", "run_" + str(hparams.run_number), hparams.checkpoint_file)), "Checkpoint file does not exist"
         assert os.path.isfile(os.path.join(src, "tb_logs", "zones_segmentation", "run_" + str(hparams.run_number), "log", "version_" + str(hparams.version_number), 'hparams.yaml')), "hparams file does not exist"
 
-        model = ZonesUNet.load_from_checkpoint(
-            checkpoint_path=os.path.join(src, "checkpoints", "zones_segmentation", "run_" + str(hparams.run_number), hparams.checkpoint_file),
-            hparams_file=os.path.join(src, "tb_logs", "zones_segmentation", "run_" + str(hparams.run_number), "log", "version_" + str(hparams.version_number), 'hparams.yaml'),
-            map_location=None
-        )
+
+        if hparams.model_family == "gourmelon":
+            model = ZonesUNet.load_from_checkpoint(
+                checkpoint_path=os.path.join(src, "checkpoints", "zones_segmentation", "run_" + str(hparams.run_number),
+                                             hparams.checkpoint_file),
+                hparams_file=os.path.join(src, "tb_logs", "zones_segmentation", "run_" + str(hparams.run_number), "log",
+                                          "version_" + str(hparams.version_number), 'hparams.yaml'),
+                map_location=None
+            )
+        else:
+            model = ZonesDeepLab.load_from_checkpoint(
+                checkpoint_path=os.path.join(src, "checkpoints", "zones_segmentation", "run_" + str(hparams.run_number),
+                                             hparams.checkpoint_file),
+                hparams_file=os.path.join(src, "tb_logs", "zones_segmentation", "run_" + str(hparams.run_number), "log",
+                                          "version_" + str(hparams.version_number), 'hparams.yaml'),
+                map_location=None
+            )
         datamodule = GlacierZonesDataModule(batch_size=model.hparams.batch_size, augmentation=False, parent_dir=hparams.data_parent_dir, bright=0, wrap=0, noise=0, rotate=0, flip=0)
 
     if hparams.mode == "test":

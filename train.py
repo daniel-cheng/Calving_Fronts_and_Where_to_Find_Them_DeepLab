@@ -153,7 +153,7 @@ if __name__ == '__main__':
                                                                        "Train.py will resume training from a "
                                                                        "temporary.ckpt if one is available for this "
                                                                        "run.")
-    parent_parser.add_argument('--run_number', type=int, default=5,
+    parent_parser.add_argument('--run_number', type=int, default=6,
                                help="The number how often this model was already trained. "
                                     "If you run train.py twice with the same run_number, "
                                     "the second run will pick up training the first model from the temporary.ckpt.")
